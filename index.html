@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Ceber Flex</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Tahoma', sans-serif;
+    }
+    body {
+      background: #008080;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+      touch-action: none;
+      position: relative;
+    }
+
+    /* === Танцующие бананы === */
+    .banana {
+      position: absolute;
+      top: 50%;
+      width: 80px;
+      height: 80px;
+      transform: translateY(-50%);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+      z-index: 5;
+    }
+    .banana.left {
+      left: calc(50% - 280px); /* чуть левее окна */
+    }
+    .banana.right {
+      right: calc(50% - 280px); /* симметрично справа */
+    }
+    .banana.visible {
+      opacity: 1;
+    }
+
+    /* === Основное окно === */
+    .window {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(95vw, 340px);
+      background: #d3d7cf;
+      border: 2px solid #000;
+      box-shadow: 4px 4px 0 rgba(0,0,0,0.4);
+      border-radius: 6px;
+      overflow: hidden;
+      z-index: 10;
+    }
+    .titlebar {
+      background: linear-gradient(to bottom, #0a246a, #061a4e);
+      color: white;
+      padding: 6px 10px;
+      font-weight: bold;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: move;
+    }
+    .window-title {
+      pointer-events: none;
+      flex: 1;
+      text-align: center;
+      margin-right: 60px;
+    }
+    .window-controls {
+      display: flex;
+      gap: 6px;
+    }
+    .window-btn {
+      width: 24px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      background: #d4d0c8;
+      border: 1px solid #000;
+      padding: 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    .window-btn:hover, .window-btn:active {
+      background: #c0c0c0;
+    }
+    .content {
+      padding: 16px;
+      text-align: center;
+    }
+    .avatar {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 2px solid #000;
+      background: #ccc;
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      color: #666;
+    }
+    h1 {
+      font-size: 18px;
+      margin-bottom: 14px;
+      color: #000;
+      word-break: break-word;
+    }
+    .contacts {
+      background: #f0f0f0;
+      border: 2px solid #808080;
+      border-top: none;
+      padding: 12px;
+      font-size: 14px;
+      text-align: left;
+    }
+    .contacts p {
+      margin: 6px 0;
+      line-height: 1.3;
+    }
+    .contacts a {
+      color: #000;
+      text-decoration: none;
+    }
+    .contacts a:hover, .contacts a:active {
+      text-decoration: underline;
+    }
+    .minimized {
+      height: 32px !important;
+      overflow: hidden;
+    }
+
+    /* === XP Плеер снизу === */
+    #xpPlayer {
+      position: fixed;
+      bottom: -80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(95vw, 320px);
+      background: #d3d7cf;
+      border: 2px solid #000;
+      border-top-left-radius: 6px;
+      border-top-right-radius: 6px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 -4px 0 rgba(0,0,0,0.3);
+      transition: bottom 0.4s ease;
+      z-index: 100;
+    }
+    #xpPlayer.show {
+      bottom: 0;
+    }
+    .player-btn {
+      width: 28px;
+      height: 24px;
+      background: #d4d0c8;
+      border: 1px solid #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .player-btn:hover, .player-btn:active {
+      background: #c0c0c0;
+    }
+    .player-progress {
+      flex: 1;
+      height: 12px;
+      background: #f0f0f0;
+      border: 1px solid #808080;
+      position: relative;
+      cursor: pointer;
+    }
+    .player-progress-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 0%;
+      background: #0a246a;
+    }
+    .player-label {
+      font-size: 12px;
+      color: #000;
+      white-space: nowrap;
+    }
+	.avatar {
+	  width: 90px;
+	  height: 90px;
+	  border-radius: 50%;
+	  border: 2px solid #000;
+	  object-fit: cover;        /* обрезает GIF по центру, сохраняя пропорции */
+	  background: #ccc;         /* фон на случай ошибки загрузки */
+	  display: block;           /* убирает лишнее пространство под изображением */
+	}
+  </style>
+</head>
+<body>
+  <audio id="bgMusic" preload="auto">
+    <source src="cflx.mp3" type="audio/mpeg">
+  </audio>
+
+  <img src="https://media.tenor.com/5Ie0r-H6LBAAAAAj/dancing-banana-happy.gif" class="banana left" id="bananaLeft">
+  <img src="https://media.tenor.com/5Ie0r-H6LBAAAAAj/dancing-banana-happy.gif" class="banana right" id="bananaRight">
+
+  <!-- Основное окно -->
+  <div class="window" id="xpWindow">
+    <div class="titlebar" id="titlebar">
+      <div class="window-title">Ceber Flex cflx.bar</div>
+      <div class="window-controls">
+        <div class="window-btn" id="minimizeBtn">–</div>
+        <div class="window-btn" id="closeBtn">×</div>
+      </div>
+    </div>
+    <div class="content">
+      <img src="nokia_flex.gif" class="avatar" alt="Ceber Flex">
+      <h1>Nokia Flex</h1>
+      <div class="contacts">
+        <p><strong>Telegram:</strong> <a href="https://t.me/nokia_flex" target="_blank">@nokia_flex</a></p>
+        <p><strong>Канал:</strong> <a href="https://t.me/sosiski_flex" target="_blank">@sosiski_flex</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- XP Плеер -->
+  <div id="xpPlayer">
+    <div class="player-btn" id="playBtn">▶</div>
+    <div class="player-progress" id="progressBar">
+      <div class="player-progress-fill" id="progressFill"></div>
+    </div>
+    <div class="player-label" id="timeLabel">0:00</div>
+    <div class="player-btn" id="volBtn">🔊</div>
+  </div>
+
+  <script>
+    const audio = document.getElementById('bgMusic');
+    const xpPlayer = document.getElementById('xpPlayer');
+    const playBtn = document.getElementById('playBtn');
+    const volBtn = document.getElementById('volBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    const timeLabel = document.getElementById('timeLabel');
+
+    const bananaLeft = document.getElementById('bananaLeft');
+    const bananaRight = document.getElementById('bananaRight');
+
+    const windowEl = document.getElementById('xpWindow');
+    const titlebar = document.getElementById('titlebar');
+    const minimizeBtn = document.getElementById('minimizeBtn');
+    const closeBtn = document.getElementById('closeBtn');
+
+    let isDragging = false;
+    let isMuted = false;
+    audio.volume = 0.3;
+
+    // Показать плеер
+    setTimeout(() => xpPlayer.classList.add('show'), 1500);
+
+    // Управление бананами
+    function toggleBananas(show) {
+      if (show) {
+        bananaLeft.classList.add('visible');
+        bananaRight.classList.add('visible');
+      } else {
+        bananaLeft.classList.remove('visible');
+        bananaRight.classList.remove('visible');
+      }
+    }
+
+    // Воспроизведение
+    playBtn.addEventListener('click', () => {
+      if (audio.paused) {
+        audio.play().catch(e => {
+          alert('Разрешите звук и нажмите ещё раз!');
+        });
+        playBtn.textContent = '⏸';
+        toggleBananas(true);
+      } else {
+        audio.pause();
+        playBtn.textContent = '▶';
+        toggleBananas(false);
+      }
+    });
+
+    // Громкость
+    volBtn.addEventListener('click', () => {
+      if (isMuted) {
+        audio.muted = false;
+        volBtn.textContent = '🔊';
+        isMuted = false;
+      } else {
+        audio.muted = true;
+        volBtn.textContent = '🔇';
+        isMuted = true;
+      }
+    });
+
+    // Прогресс
+    progressBar.addEventListener('click', (e) => {
+      const rect = progressBar.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const percent = clickX / rect.width;
+      audio.currentTime = percent * audio.duration;
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration) {
+        const percent = (audio.currentTime / audio.duration) * 100;
+        progressFill.style.width = `${percent}%`;
+        const mins = Math.floor(audio.currentTime / 60);
+        const secs = Math.floor(audio.currentTime % 60).toString().padStart(2, '0');
+        timeLabel.textContent = `${mins}:${secs}`;
+      }
+    });
+
+    audio.addEventListener('ended', () => {
+      playBtn.textContent = '▶';
+      toggleBananas(false);
+    });
+
+    // Перетаскивание окна
+    function startDrag(clientX, clientY) {
+      isDragging = true;
+      const rect = windowEl.getBoundingClientRect();
+      const offsetX = clientX - rect.left;
+      const offsetY = clientY - rect.top;
+
+      const move = (x, y) => {
+        windowEl.style.left = `${x - offsetX}px`;
+        windowEl.style.top = `${y - offsetY}px`;
+        windowEl.style.transform = 'none';
+      };
+
+      const mouseMove = (e) => move(e.clientX, e.clientY);
+      const touchMove = (e) => move(e.touches[0].clientX, e.touches[0].clientY);
+
+      document.addEventListener('mousemove', mouseMove);
+      document.addEventListener('touchmove', touchMove, { passive: false });
+      const cleanup = () => {
+        isDragging = false;
+        document.removeEventListener('mousemove', mouseMove);
+        document.removeEventListener('touchmove', touchMove);
+        document.removeEventListener('mouseup', cleanup);
+        document.removeEventListener('touchend', cleanup);
+      };
+      document.addEventListener('mouseup', cleanup);
+      document.addEventListener('touchend', cleanup);
+    }
+
+    titlebar.addEventListener('mousedown', e => {
+      if (e.target.closest('.window-btn')) return;
+      startDrag(e.clientX, e.clientY);
+      e.preventDefault();
+    });
+    titlebar.addEventListener('touchstart', e => {
+      if (e.target.closest('.window-btn')) return;
+      startDrag(e.touches[0].clientX, e.touches[0].clientY);
+      e.preventDefault();
+    });
+
+    // Сворачивание
+    minimizeBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      windowEl.classList.toggle('minimized');
+      minimizeBtn.textContent = windowEl.classList.contains('minimized') ? '+' : '–';
+    });
+    closeBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (confirm('Закрыть окно Ceber Flex?')) windowEl.style.display = 'none';
+    });
+  </script>
+</body>
+</html>
